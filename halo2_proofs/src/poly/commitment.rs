@@ -4,13 +4,11 @@
 //! [halo]: https://eprint.iacr.org/2019/1021
 
 use super::{Coeff, LagrangeCoeff, Polynomial};
-use crate::arithmetic::{
-    best_fft, best_multiexp, parallelize, CurveAffine, CurveExt, FieldExt, Group,
-};
+use crate::arithmetic::{best_fft, best_multiexp, parallelize, CurveAffine, CurveExt};
 use crate::helpers::CurveRead;
 
 use ff::{Field, PrimeField};
-use group::{prime::PrimeCurveAffine, Curve, Group as _};
+use group::{prime::PrimeCurveAffine, Curve, Group};
 use std::ops::{Add, AddAssign, Mul, MulAssign};
 
 mod msm;
@@ -24,13 +22,13 @@ pub use verifier::{verify_proof, Accumulator, Guard};
 use std::io;
 
 /// These are the public parameters for the polynomial commitment scheme.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Params<C: CurveAffine> {
     pub(crate) k: u32,
     pub(crate) n: u64,
     pub(crate) g: Vec<C>,
     pub(crate) g_lagrange: Vec<C>,
-    pub(crate) h: C,
+    pub(crate) w: C,
     pub(crate) u: C,
 }
 
@@ -82,7 +80,7 @@ impl<C: CurveAffine> Params<C> {
         }
         let mut g_lagrange_projective = g_projective;
         best_fft(&mut g_lagrange_projective, alpha_inv, k);
-        let minv = C::Scalar::TWO_INV.pow_vartime(&[k as u64, 0, 0, 0]);
+        let minv = C::Scalar::TWO_INV.pow_vartime([k as u64, 0, 0, 0]);
         parallelize(&mut g_lagrange_projective, |g, _| {
             for g in g.iter_mut() {
                 *g *= minv;
@@ -102,7 +100,7 @@ impl<C: CurveAffine> Params<C> {
         };
 
         let hasher = C::CurveExt::hash_to_curve("Halo2-Parameters");
-        let h = hasher(&[1]).to_affine();
+        let w = hasher(&[1]).to_affine();
         let u = hasher(&[2]).to_affine();
 
         Params {
@@ -110,7 +108,7 @@ impl<C: CurveAffine> Params<C> {
             n,
             g,
             g_lagrange,
-            h,
+            w,
             u,
         }
     }
@@ -126,7 +124,7 @@ impl<C: CurveAffine> Params<C> {
         tmp_scalars.push(r.0);
 
         tmp_bases.extend(self.g.iter());
-        tmp_bases.push(self.h);
+        tmp_bases.push(self.w);
 
         best_multiexp::<C>(&tmp_scalars, &tmp_bases)
     }
@@ -146,7 +144,7 @@ impl<C: CurveAffine> Params<C> {
         tmp_scalars.push(r.0);
 
         tmp_bases.extend(self.g_lagrange.iter());
-        tmp_bases.push(self.h);
+        tmp_bases.push(self.w);
 
         best_multiexp::<C>(&tmp_scalars, &tmp_bases)
     }
@@ -171,7 +169,7 @@ impl<C: CurveAffine> Params<C> {
         for g_lagrange_element in &self.g_lagrange {
             writer.write_all(g_lagrange_element.to_bytes().as_ref())?;
         }
-        writer.write_all(self.h.to_bytes().as_ref())?;
+        writer.write_all(self.w.to_bytes().as_ref())?;
         writer.write_all(self.u.to_bytes().as_ref())?;
 
         Ok(())
@@ -188,7 +186,7 @@ impl<C: CurveAffine> Params<C> {
         let g: Vec<_> = (0..n).map(|_| C::read(reader)).collect::<Result<_, _>>()?;
         let g_lagrange: Vec<_> = (0..n).map(|_| C::read(reader)).collect::<Result<_, _>>()?;
 
-        let h = C::read(reader)?;
+        let w = C::read(reader)?;
         let u = C::read(reader)?;
 
         Ok(Params {
@@ -196,7 +194,7 @@ impl<C: CurveAffine> Params<C> {
             n,
             g,
             g_lagrange,
-            h,
+            w,
             u,
         })
     }
@@ -206,13 +204,13 @@ impl<C: CurveAffine> Params<C> {
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct Blind<F>(pub F);
 
-impl<F: FieldExt> Default for Blind<F> {
+impl<F: Field> Default for Blind<F> {
     fn default() -> Self {
-        Blind(F::one())
+        Blind(F::ONE)
     }
 }
 
-impl<F: FieldExt> Add for Blind<F> {
+impl<F: Field> Add for Blind<F> {
     type Output = Self;
 
     fn add(self, rhs: Blind<F>) -> Self {
@@ -220,7 +218,7 @@ impl<F: FieldExt> Add for Blind<F> {
     }
 }
 
-impl<F: FieldExt> Mul for Blind<F> {
+impl<F: Field> Mul for Blind<F> {
     type Output = Self;
 
     fn mul(self, rhs: Blind<F>) -> Self {
@@ -228,25 +226,25 @@ impl<F: FieldExt> Mul for Blind<F> {
     }
 }
 
-impl<F: FieldExt> AddAssign for Blind<F> {
+impl<F: Field> AddAssign for Blind<F> {
     fn add_assign(&mut self, rhs: Blind<F>) {
         self.0 += rhs.0;
     }
 }
 
-impl<F: FieldExt> MulAssign for Blind<F> {
+impl<F: Field> MulAssign for Blind<F> {
     fn mul_assign(&mut self, rhs: Blind<F>) {
         self.0 *= rhs.0;
     }
 }
 
-impl<F: FieldExt> AddAssign<F> for Blind<F> {
+impl<F: Field> AddAssign<F> for Blind<F> {
     fn add_assign(&mut self, rhs: F) {
         self.0 += rhs;
     }
 }
 
-impl<F: FieldExt> MulAssign<F> for Blind<F> {
+impl<F: Field> MulAssign<F> for Blind<F> {
     fn mul_assign(&mut self, rhs: F) {
         self.0 *= rhs;
     }
@@ -309,7 +307,7 @@ fn test_opening_proof() {
         commitment::{Blind, Params},
         EvaluationDomain,
     };
-    use crate::arithmetic::{eval_polynomial, FieldExt};
+    use crate::arithmetic::eval_polynomial;
     use crate::pasta::{EpAffine, Fq};
     use crate::transcript::{
         Blake2bRead, Blake2bWrite, Challenge255, Transcript, TranscriptRead, TranscriptWrite,
@@ -357,7 +355,7 @@ fn test_opening_proof() {
     assert_eq!(v, v_prime);
 
     let mut commitment_msm = params.empty_msm();
-    commitment_msm.append_term(Field::one(), p);
+    commitment_msm.append_term(Field::ONE, p);
     let guard = verify_proof(&params, commitment_msm, &mut transcript, *x, v).unwrap();
     let ch_verifier = transcript.squeeze_challenge();
     assert_eq!(*ch_prover, *ch_verifier);
