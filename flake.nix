@@ -13,16 +13,16 @@
            pkgs =
              import nixpkgs
                { overlays =
-                   [ (import "${cargo2nix}/overlay")
-                     rust-overlay.overlay
+                   [ cargo2nix.overlays.default
+                     rust-overlay.overlays.default
                    ];
 
                  inherit system;
                };
 
-            rustChannel = "1.58.1";
+            rustChannel = "1.67.1";
              rustPkgs =
-               pkgs.rustBuilder.makePackageSet'
+               pkgs.rustBuilder.makePackageSet
                  { inherit rustChannel;
                    packageFun = import ./Cargo.nix;
                    packageOverrides =
