@@ -1,6 +1,7 @@
 use core::cmp::max;
 use core::ops::{Add, Mul};
 use ff::Field;
+use serde::{Serialize, Deserialize};
 use std::{
     convert::TryFrom,
     ops::{Neg, Sub},
@@ -21,7 +22,7 @@ pub trait ColumnType:
 }
 
 /// A column with an index and type
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct Column<C: ColumnType> {
     index: usize,
     column_type: C,
@@ -895,7 +896,7 @@ impl<F: Field, C: Into<Constraint<F>>, Iter: IntoIterator<Item = C>> IntoIterato
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct Gate<F: Field> {
     name: &'static str,
     constraint_names: Vec<&'static str>,
@@ -967,7 +968,7 @@ pub struct ConstraintSystem<F: Field> {
 
 /// Represents the minimal parameters that determine a `ConstraintSystem`.
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct PinnedConstraintSystem<'a, F: Field> {
     num_fixed_columns: &'a usize,
     num_advice_columns: &'a usize,
@@ -983,6 +984,7 @@ pub struct PinnedConstraintSystem<'a, F: Field> {
     minimum_degree: &'a Option<usize>,
 }
 
+#[derive(Serialize, Deserialize)]
 struct PinnedGates<'a, F: Field>(&'a Vec<Gate<F>>);
 
 impl<'a, F: Field> std::fmt::Debug for PinnedGates<'a, F> {
