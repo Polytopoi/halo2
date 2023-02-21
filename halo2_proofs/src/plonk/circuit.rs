@@ -63,19 +63,19 @@ impl<C: ColumnType> PartialOrd for Column<C> {
 }
 
 /// An advice column
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct Advice;
 
 /// A fixed column
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct Fixed;
 
 /// An instance column
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct Instance;
 
 /// An enum over the Advice, Fixed, Instance structs
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub enum Any {
     /// An Advice variant
     Advice,
@@ -253,7 +253,7 @@ impl TryFrom<Column<Any>> for Column<Instance> {
 ///     Ok(())
 /// }
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Selector(pub(crate) usize, bool);
 
 impl Selector {
@@ -270,7 +270,7 @@ impl Selector {
 }
 
 /// Query of fixed column at a certain relative location
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct FixedQuery {
     /// Query index
     pub(crate) index: usize,
@@ -281,7 +281,7 @@ pub struct FixedQuery {
 }
 
 /// Query of advice column at a certain relative location
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct AdviceQuery {
     /// Query index
     pub(crate) index: usize,
@@ -292,7 +292,7 @@ pub struct AdviceQuery {
 }
 
 /// Query of instance column at a certain relative location
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct InstanceQuery {
     /// Query index
     pub(crate) index: usize,
@@ -486,7 +486,7 @@ pub trait Circuit<F: Field> {
 }
 
 /// Low-degree expression representing an identity that must hold over the committed columns.
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub enum Expression<F> {
     /// This is a constant polynomial
     Constant(F),
@@ -771,7 +771,7 @@ pub(crate) struct PointIndex(pub usize);
 
 /// A "virtual cell" is a PLONK cell that has been queried at a particular relative offset
 /// within a custom gate.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct VirtualCell {
     pub(crate) column: Column<Any>,
     pub(crate) rotation: Rotation,

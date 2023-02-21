@@ -1,10 +1,11 @@
+use serde::{Serialize, Deserialize};
 use super::circuit::Expression;
 use ff::Field;
 
 pub(crate) mod prover;
 pub(crate) mod verifier;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct Argument<F: Field> {
     pub input_expressions: Vec<Expression<F>>,
     pub table_expressions: Vec<Expression<F>>,

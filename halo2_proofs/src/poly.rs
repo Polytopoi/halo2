@@ -7,6 +7,7 @@ use crate::plonk::Assigned;
 
 use group::ff::{BatchInvert, Field};
 
+use serde::{Serialize, Deserialize};
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::ops::{Add, Deref, DerefMut, Index, IndexMut, Mul, RangeFrom, RangeFull};
@@ -302,7 +303,7 @@ impl<F: Field, B: Basis> Mul<F> for Polynomial<F, B> {
 /// Describes the relative rotation of a vector. Negative numbers represent
 /// reverse (leftmost) rotations and positive numbers represent forward (rightmost)
 /// rotations. Zero represents no rotation.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Rotation(pub i32);
 
 impl Rotation {

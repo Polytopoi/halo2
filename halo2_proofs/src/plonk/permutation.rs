@@ -1,3 +1,4 @@
+use serde::{Serialize, Deserialize};
 use super::circuit::{Any, Column};
 use crate::{
     arithmetic::CurveAffine,
@@ -9,7 +10,7 @@ pub(crate) mod prover;
 pub(crate) mod verifier;
 
 /// A permutation argument.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct Argument {
     /// A sequence of columns involved in the argument.
     columns: Vec<Column<Any>>,
