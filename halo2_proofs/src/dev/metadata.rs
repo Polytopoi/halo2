@@ -84,42 +84,42 @@ impl fmt::Display for VirtualCell {
 
 /// Metadata about a configured gate within a circuit.
 #[derive(Debug, PartialEq, Eq)]
-pub struct Gate {
+pub struct Gate<'a> {
     /// The index of the active gate. These indices are assigned in the order in which
     /// `ConstraintSystem::create_gate` is called during `Circuit::configure`.
     pub(super) index: usize,
     /// The name of the active gate. These are specified by the gate creator (such as
     /// a chip implementation), and is not enforced to be unique.
-    pub(super) name: &'static str,
+    pub(super) name: &'a str,
 }
 
-impl fmt::Display for Gate {
+impl<'a> fmt::Display for Gate<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Gate {} ('{}')", self.index, self.name)
     }
 }
 
-impl From<(usize, &'static str)> for Gate {
-    fn from((index, name): (usize, &'static str)) -> Self {
+impl<'a> From<(usize, &'a str)> for Gate<'a> {
+    fn from((index, name): (usize, &'a str)) -> Self {
         Gate { index, name }
     }
 }
 
 /// Metadata about a configured constraint within a circuit.
 #[derive(Debug, PartialEq, Eq)]
-pub struct Constraint {
+pub struct Constraint<'a> {
     /// The gate containing the constraint.
-    pub(super) gate: Gate,
+    pub(super) gate: Gate<'a>,
     /// The index of the polynomial constraint within the gate. These indices correspond
     /// to the order in which the constraints are returned from the closure passed to
     /// `ConstraintSystem::create_gate` during `Circuit::configure`.
     pub(super) index: usize,
     /// The name of the constraint. This is specified by the gate creator (such as a chip
     /// implementation), and is not enforced to be unique.
-    pub(super) name: &'static str,
+    pub(super) name: &'a str,
 }
 
-impl fmt::Display for Constraint {
+impl<'a> fmt::Display for Constraint<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -136,8 +136,8 @@ impl fmt::Display for Constraint {
     }
 }
 
-impl From<(Gate, usize, &'static str)> for Constraint {
-    fn from((gate, index, name): (Gate, usize, &'static str)) -> Self {
+impl<'a> From<(Gate<'a>, usize, &'a str)> for Constraint<'a> {
+    fn from((gate, index, name): (Gate<'a>, usize, &'a str)) -> Self {
         Constraint { gate, index, name }
     }
 }

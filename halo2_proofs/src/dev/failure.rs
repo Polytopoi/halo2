@@ -108,11 +108,11 @@ impl FailureLocation {
 
 /// The reasons why a particular circuit is not satisfied.
 #[derive(Debug, PartialEq, Eq)]
-pub enum VerifyFailure {
+pub enum VerifyFailure<'a> {
     /// A cell used in an active gate was not assigned to.
     CellNotAssigned {
         /// The index of the active gate.
-        gate: metadata::Gate,
+        gate: metadata::Gate<'a>,
         /// The region in which this cell should be assigned.
         region: metadata::Region,
         /// The offset (relative to the start of the region) at which the active gate
@@ -128,7 +128,7 @@ pub enum VerifyFailure {
     /// An instance cell used in an active gate was not assigned to.
     InstanceCellNotAssigned {
         /// The index of the active gate.
-        gate: metadata::Gate,
+        gate: metadata::Gate<'a>,
         /// The region in which this gate was activated.
         region: metadata::Region,
         /// The offset (relative to the start of the region) at which the active gate
@@ -142,7 +142,7 @@ pub enum VerifyFailure {
     /// A constraint was not satisfied for a particular row.
     ConstraintNotSatisfied {
         /// The polynomial constraint that is not satisfied.
-        constraint: metadata::Constraint,
+        constraint: metadata::Constraint<'a>,
         /// The location at which this constraint is not satisfied.
         ///
         /// `FailureLocation::OutsideRegion` is usually caused by a constraint that does
@@ -154,7 +154,7 @@ pub enum VerifyFailure {
     /// A constraint was active on an unusable row, and is likely missing a selector.
     ConstraintPoisoned {
         /// The polynomial constraint that is not satisfied.
-        constraint: metadata::Constraint,
+        constraint: metadata::Constraint<'a>,
     },
     /// A lookup input did not exist in its corresponding table.
     Lookup {
@@ -185,7 +185,7 @@ pub enum VerifyFailure {
     },
 }
 
-impl fmt::Display for VerifyFailure {
+impl<'a> fmt::Display for VerifyFailure<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::CellNotAssigned {
@@ -530,7 +530,7 @@ fn render_lookup<F: Field>(
     }
 }
 
-impl VerifyFailure {
+impl<'a> VerifyFailure<'a> {
     /// Emits this failure in pretty-printed format to stderr.
     pub(super) fn emit<F: Field>(&self, prover: &MockProver<F>) {
         match self {

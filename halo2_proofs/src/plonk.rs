@@ -38,18 +38,18 @@ use std::io;
 /// This is a verifying key which allows for the verification of proofs for a
 /// particular circuit.
 #[derive(Clone, Debug)]
-pub struct VerifyingKey<C: CurveAffine> {
+pub struct VerifyingKey<'a, C: CurveAffine> {
     domain: EvaluationDomain<C::Scalar>,
     fixed_commitments: Vec<C>,
     permutation: permutation::VerifyingKey<C>,
-    cs: ConstraintSystem<C::Scalar>,
+    cs: ConstraintSystem<'a, C::Scalar>,
     /// Cached maximum degree of `cs` (which doesn't change after construction).
     cs_degree: usize,
     /// The representative of this `VerifyingKey` in transcripts.
     transcript_repr: C::Scalar,
 }
 
-impl<C: CurveAffine> VerifyingKey<C>
+impl<'a, C: CurveAffine> VerifyingKey<'a, C>
 where
     C::Scalar: FromUniformBytes<64>,
 {
@@ -57,7 +57,7 @@ where
         domain: EvaluationDomain<C::Scalar>,
         fixed_commitments: Vec<C>,
         permutation: permutation::VerifyingKey<C>,
-        cs: ConstraintSystem<C::Scalar>,
+        cs: ConstraintSystem<'a, C::Scalar>,
     ) -> Self {
         // Compute cached values.
         let cs_degree = cs.degree();
@@ -89,7 +89,7 @@ where
     }
 }
 
-impl<C: CurveAffine> VerifyingKey<C> {
+impl<'a, C: CurveAffine> VerifyingKey<'a, C> {
     /// Hashes a verification key into a transcript.
     pub fn hash_into<E: EncodedChallenge<C>, T: Transcript<C, E>>(
         &self,
@@ -129,8 +129,8 @@ pub struct PinnedVerificationKey<'a, C: CurveAffine> {
 /// This is a proving key which allows for the creation of proofs for a
 /// particular circuit.
 #[derive(Clone, Debug)]
-pub struct ProvingKey<C: CurveAffine> {
-    vk: VerifyingKey<C>,
+pub struct ProvingKey<'a, C: CurveAffine> {
+    vk: VerifyingKey<'a, C>,
     l0: Polynomial<C::Scalar, ExtendedLagrangeCoeff>,
     l_blind: Polynomial<C::Scalar, ExtendedLagrangeCoeff>,
     l_last: Polynomial<C::Scalar, ExtendedLagrangeCoeff>,
@@ -140,14 +140,14 @@ pub struct ProvingKey<C: CurveAffine> {
     permutation: permutation::ProvingKey<C>,
 }
 
-impl<C: CurveAffine> ProvingKey<C> {
+impl<'a, C: CurveAffine> ProvingKey<'a, C> {
     /// Get the underlying [`VerifyingKey`].
-    pub fn get_vk(&self) -> &VerifyingKey<C> {
+    pub fn get_vk(&self) -> &VerifyingKey<'a, C> {
         &self.vk
     }
 }
 
-impl<C: CurveAffine> VerifyingKey<C> {
+impl<'a, C: CurveAffine> VerifyingKey<'a, C> {
     /// Get the underlying [`EvaluationDomain`].
     pub fn get_domain(&self) -> &EvaluationDomain<C::Scalar> {
         &self.domain

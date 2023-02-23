@@ -11,16 +11,16 @@ use crate::{
 };
 
 #[derive(Debug)]
-struct Constraint {
-    name: &'static str,
+struct Constraint<'a> {
+    name: &'a str,
     expression: String,
     queries: BTreeSet<String>,
 }
 
 #[derive(Debug)]
-struct Gate {
-    name: &'static str,
-    constraints: Vec<Constraint>,
+struct Gate<'a> {
+    name: &'a str,
+    constraints: Vec<Constraint<'a>>,
 }
 
 /// A struct for collecting and displaying the gates within a circuit.
@@ -91,14 +91,14 @@ struct Gate {
 /// );
 /// ```
 #[derive(Debug)]
-pub struct CircuitGates {
-    gates: Vec<Gate>,
+pub struct CircuitGates<'a> {
+    gates: Vec<Gate<'a>>,
     total_negations: usize,
     total_additions: usize,
     total_multiplications: usize,
 }
 
-impl CircuitGates {
+impl<'a> CircuitGates<'a> {
     /// Collects the gates from within the circuit.
     pub fn collect<F: PrimeField, C: Circuit<F>>() -> Self {
         // Collect the graph details.
@@ -249,7 +249,7 @@ impl CircuitGates {
     }
 }
 
-impl fmt::Display for CircuitGates {
+impl<'a> fmt::Display for CircuitGates<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         for gate in &self.gates {
             writeln!(f, "{}:", gate.name)?;

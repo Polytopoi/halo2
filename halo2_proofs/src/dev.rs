@@ -266,10 +266,10 @@ impl<F: Field> Mul<F> for Value<F> {
 /// ));
 /// ```
 #[derive(Debug)]
-pub struct MockProver<F: Field> {
+pub struct MockProver<'a, F: Field> {
     k: u32,
     n: u32,
-    cs: ConstraintSystem<F>,
+    cs: ConstraintSystem<'a, F>,
 
     /// The regions in the circuit.
     regions: Vec<Region>,
@@ -307,7 +307,7 @@ impl<F: Field> InstanceValue<F> {
     }
 }
 
-impl<F: Field> Assignment<F> for MockProver<F> {
+impl<'a, F: Field> Assignment<F> for MockProver<'a, F> {
     fn enter_region<NR, N>(&mut self, name: N)
     where
         NR: Into<String>,
@@ -476,7 +476,7 @@ impl<F: Field> Assignment<F> for MockProver<F> {
     }
 }
 
-impl<F: Field + Ord> MockProver<F> {
+impl<'a, F: Field + Ord> MockProver<'a, F> {
     /// Runs a synthetic keygen-and-prove operation on the given circuit, collecting data
     /// about the constraints and their assignments.
     pub fn run<ConcreteCircuit: Circuit<F>>(
@@ -565,7 +565,7 @@ impl<F: Field + Ord> MockProver<F> {
 
     /// Returns `Ok(())` if this `MockProver` is satisfied, or a list of errors indicating
     /// the reasons that the circuit is not satisfied.
-    pub fn verify(&self) -> Result<(), Vec<VerifyFailure>> {
+    pub fn verify(&self) -> Result<(), Vec<VerifyFailure<'a>>> {
         let n = self.n as i32;
 
         // Check that within each region, all cells used in instantiated gates have been
@@ -602,7 +602,7 @@ impl<F: Field + Ord> MockProver<F> {
                                         match instance_value {
                                             InstanceValue::Assigned(_) => None,
                                             _ => Some(VerifyFailure::InstanceCellNotAssigned {
-                                                gate: (gate_index, gate.name()).into(),
+                                                gate: (gate_index, gate.name().clone()).into(),
                                                 region: (r_i, r.name.clone()).into(),
                                                 gate_offset: *selector_row,
                                                 column: cell.column.try_into().unwrap(),
@@ -616,7 +616,7 @@ impl<F: Field + Ord> MockProver<F> {
                                             None
                                         } else {
                                             Some(VerifyFailure::CellNotAssigned {
-                                                gate: (gate_index, gate.name()).into(),
+                                                gate: (gate_index, gate.name().clone()).into(),
                                                 region: (r_i, r.name.clone()).into(),
                                                 gate_offset: *selector_row,
                                                 column: cell.column,

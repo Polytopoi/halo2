@@ -1,7 +1,7 @@
 use core::cmp::max;
 use core::ops::{Add, Mul};
 use ff::Field;
-use serde::{Serialize, Deserialize, Deserializer};
+use serde::{Serialize, Deserialize};
 use std::{
     convert::TryFrom,
     ops::{Neg, Sub},
@@ -897,9 +897,9 @@ impl<F: Field, C: Into<Constraint<F>>, Iter: IntoIterator<Item = C>> IntoIterato
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub(crate) struct Gate<F: Field> {
-    name: &'static str,
-    constraint_names: Vec<&'static str>,
+pub(crate) struct Gate<'a, F: Field> {
+    name: &'a str,
+    constraint_names: Vec<&'a str>,
     polys: Vec<Expression<F>>,
     /// We track queried selectors separately from other cells, so that we can use them to
     /// trigger debug checks on gates.
@@ -907,12 +907,12 @@ pub(crate) struct Gate<F: Field> {
     queried_cells: Vec<VirtualCell>,
 }
 
-impl<F: Field> Gate<F> {
-    pub(crate) fn name(&self) -> &'static str {
+impl<'a, F: Field> Gate<'a, F> {
+    pub(crate) fn name(&self) -> &'a str {
         self.name
     }
 
-    pub(crate) fn constraint_name(&self, constraint_index: usize) -> &'static str {
+    pub(crate) fn constraint_name(&self, constraint_index: usize) -> &'a str {
         self.constraint_names[constraint_index]
     }
 
@@ -931,8 +931,8 @@ impl<F: Field> Gate<F> {
 
 /// This is a description of the circuit environment, such as the gate, column and
 /// permutation arrangements.
-#[derive(Debug, Clone)]
-pub struct ConstraintSystem<F: Field> {
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ConstraintSystem<'a, F: Field> {
     pub(crate) num_fixed_columns: usize,
     pub(crate) num_advice_columns: usize,
     pub(crate) num_instance_columns: usize,
@@ -943,7 +943,8 @@ pub struct ConstraintSystem<F: Field> {
     /// tooling right now.
     pub(crate) selector_map: Vec<Column<Fixed>>,
 
-    pub(crate) gates: Vec<Gate<F>>,
+    #[serde(borrow)]
+    pub(crate) gates: Vec<Gate<'a, F>>,
     pub(crate) advice_queries: Vec<(Column<Advice>, Rotation)>,
     // Contains an integer for each advice column
     // identifying how many distinct queries it has
@@ -968,7 +969,7 @@ pub struct ConstraintSystem<F: Field> {
 
 /// Represents the minimal parameters that determine a `ConstraintSystem`.
 #[allow(dead_code)]
-#[derive(Serialize, Debug)]
+#[derive(Debug)]
 pub struct PinnedConstraintSystem<'a, F: Field> {
     num_fixed_columns: &'a usize,
     num_advice_columns: &'a usize,
@@ -984,16 +985,7 @@ pub struct PinnedConstraintSystem<'a, F: Field> {
     minimum_degree: &'a Option<usize>,
 }
 
-impl<'de, F> Deserialize<'de> for PinnedConstraintSystem<'de, F>
-  where F: Field {
-      fn deserialize<D>(_: D) -> Result<Self, <D as Deserializer<'de>>::Error>
-          where D: Deserializer<'de> {
-              todo!()
-          }
-  }
-
-#[derive(Serialize)]
-struct PinnedGates<'a, F: Field>(&'a Vec<Gate<F>>);
+struct PinnedGates<'a, F: Field>(&'a Vec<Gate<'a, F>>);
 
 impl<'a, F: Field> std::fmt::Debug for PinnedGates<'a, F> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
@@ -1003,8 +995,8 @@ impl<'a, F: Field> std::fmt::Debug for PinnedGates<'a, F> {
     }
 }
 
-impl<F: Field> Default for ConstraintSystem<F> {
-    fn default() -> ConstraintSystem<F> {
+impl<'a, F: Field> Default for ConstraintSystem<'a, F> {
+    fn default() -> ConstraintSystem<'a, F> {
         ConstraintSystem {
             num_fixed_columns: 0,
             num_advice_columns: 0,
@@ -1024,7 +1016,7 @@ impl<F: Field> Default for ConstraintSystem<F> {
     }
 }
 
-impl<F: Field> ConstraintSystem<F> {
+impl<'a, F: Field> ConstraintSystem<'a, F> {
     /// Obtain a pinned version of this constraint system; a structure with the
     /// minimal parameters needed to determine the rest of the constraint
     /// system.
@@ -1069,11 +1061,13 @@ impl<F: Field> ConstraintSystem<F> {
     /// `table_map` returns a map between input expressions and the table columns
     /// they need to match.
     pub fn lookup(
-        &mut self,
-        table_map: impl FnOnce(&mut VirtualCells<'_, F>) -> Vec<(Expression<F>, TableColumn)>,
+        &'a mut self,
+        table_map: impl FnOnce(&mut VirtualCells<'a, F>) -> Vec<(Expression<F>, TableColumn)>,
     ) -> usize {
+        let _index = self.lookups.len();
+
         let mut cells = VirtualCells::new(self);
-        let table_map = table_map(&mut cells)
+        let _table_map: Vec<(Expression<F>, Expression<F>)> = table_map(&mut cells)
             .into_iter()
             .map(|(input, table)| {
                 if input.contains_simple_selector() {
@@ -1086,11 +1080,10 @@ impl<F: Field> ConstraintSystem<F> {
             })
             .collect();
 
-        let index = self.lookups.len();
+        todo!();
+        // self.lookups.push(lookup::Argument::new(table_map));
 
-        self.lookups.push(lookup::Argument::new(table_map));
-
-        index
+        // index
     }
 
     fn query_fixed_index(&mut self, column: Column<Fixed>) -> usize {
@@ -1208,33 +1201,34 @@ impl<F: Field> ConstraintSystem<F> {
     /// A gate is required to contain polynomial constraints. This method will panic if
     /// `constraints` returns an empty iterator.
     pub fn create_gate<C: Into<Constraint<F>>, Iter: IntoIterator<Item = C>>(
-        &mut self,
-        name: &'static str,
-        constraints: impl FnOnce(&mut VirtualCells<'_, F>) -> Iter,
+        &'a mut self,
+        _name: &'a str,
+        _constraints: impl FnOnce(&mut VirtualCells<'a, F>) -> Iter,
     ) {
-        let mut cells = VirtualCells::new(self);
-        let constraints = constraints(&mut cells);
-        let queried_selectors = cells.queried_selectors;
-        let queried_cells = cells.queried_cells;
+        todo!()
+        // let mut cells = VirtualCells::new(self);
+        // let constraints = constraints(&mut cells);
+        // let queried_selectors = cells.queried_selectors;
+        // let queried_cells = cells.queried_cells;
 
-        let (constraint_names, polys): (_, Vec<_>) = constraints
-            .into_iter()
-            .map(|c| c.into())
-            .map(|c| (c.name, c.poly))
-            .unzip();
+        // let (constraint_names, polys): (_, Vec<_>) = constraints
+        //     .into_iter()
+        //     .map(|c| c.into())
+        //     .map(|c| (c.name, c.poly))
+        //     .unzip::<&str, Expression<F>, _, Vec<Expression<F>>>();
 
-        assert!(
-            !polys.is_empty(),
-            "Gates must contain at least one constraint."
-        );
+        // assert!(
+        //     !polys.is_empty(),
+        //     "Gates must contain at least one constraint."
+        // );
 
-        self.gates.push(Gate {
-            name,
-            constraint_names,
-            polys,
-            queried_selectors,
-            queried_cells,
-        });
+        // self.gates.push(Gate {
+        //     name,
+        //     constraint_names,
+        //     polys,
+        //     queried_selectors,
+        //     queried_cells,
+        // });
     }
 
     /// This will compress selectors together depending on their provided
@@ -1486,13 +1480,13 @@ impl<F: Field> ConstraintSystem<F> {
 /// table.
 #[derive(Debug)]
 pub struct VirtualCells<'a, F: Field> {
-    meta: &'a mut ConstraintSystem<F>,
+    meta: &'a mut ConstraintSystem<'a, F>,
     queried_selectors: Vec<Selector>,
     queried_cells: Vec<VirtualCell>,
 }
 
 impl<'a, F: Field> VirtualCells<'a, F> {
-    fn new(meta: &'a mut ConstraintSystem<F>) -> Self {
+    fn new(meta: &'a mut ConstraintSystem<'a, F>) -> Self {
         VirtualCells {
             meta,
             queried_selectors: vec![],

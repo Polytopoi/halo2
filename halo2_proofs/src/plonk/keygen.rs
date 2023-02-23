@@ -186,10 +186,10 @@ impl<F: Field> Assignment<F> for Assembly<F> {
 }
 
 /// Generate a `VerifyingKey` from an instance of `Circuit`.
-pub fn keygen_vk<C, ConcreteCircuit>(
-    params: &Params<C>,
+pub fn keygen_vk<'a, C, ConcreteCircuit>(
+    params: &'a Params<C>,
     circuit: &ConcreteCircuit,
-) -> Result<VerifyingKey<C>, Error>
+) -> Result<VerifyingKey<'a, C>, Error>
 where
     C: CurveAffine,
     C::Scalar: FromUniformBytes<64>,
@@ -244,11 +244,11 @@ where
 }
 
 /// Generate a `ProvingKey` from a `VerifyingKey` and an instance of `Circuit`.
-pub fn keygen_pk<C, ConcreteCircuit>(
+pub fn keygen_pk<'a, C, ConcreteCircuit>(
     params: &Params<C>,
-    vk: VerifyingKey<C>,
+    vk: VerifyingKey<'a, C>,
     circuit: &ConcreteCircuit,
-) -> Result<ProvingKey<C>, Error>
+) -> Result<ProvingKey<'a, C>, Error>
 where
     C: CurveAffine,
     ConcreteCircuit: Circuit<C::Scalar>,
