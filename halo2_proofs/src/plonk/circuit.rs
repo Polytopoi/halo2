@@ -1,7 +1,7 @@
 use core::cmp::max;
 use core::ops::{Add, Mul};
 use ff::Field;
-use serde::{Serialize, Deserialize};
+use serde::{Serialize, Deserialize, Deserializer};
 use std::{
     convert::TryFrom,
     ops::{Neg, Sub},
@@ -968,7 +968,7 @@ pub struct ConstraintSystem<F: Field> {
 
 /// Represents the minimal parameters that determine a `ConstraintSystem`.
 #[allow(dead_code)]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Debug)]
 pub struct PinnedConstraintSystem<'a, F: Field> {
     num_fixed_columns: &'a usize,
     num_advice_columns: &'a usize,
@@ -984,7 +984,15 @@ pub struct PinnedConstraintSystem<'a, F: Field> {
     minimum_degree: &'a Option<usize>,
 }
 
-#[derive(Serialize, Deserialize)]
+impl<'de, F> Deserialize<'de> for PinnedConstraintSystem<'de, F>
+  where F: Field {
+      fn deserialize<D>(_: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+          where D: Deserializer<'de> {
+              todo!()
+          }
+  }
+
+#[derive(Serialize)]
 struct PinnedGates<'a, F: Field>(&'a Vec<Gate<F>>);
 
 impl<'a, F: Field> std::fmt::Debug for PinnedGates<'a, F> {
