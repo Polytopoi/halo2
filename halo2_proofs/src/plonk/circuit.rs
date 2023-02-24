@@ -4,6 +4,7 @@ use ff::Field;
 use serde::{Serialize, Deserialize};
 use std::{
     convert::TryFrom,
+    marker::PhantomData,
     ops::{Neg, Sub},
 };
 
@@ -790,24 +791,24 @@ impl<Col: Into<Column<Any>>> From<(Col, Rotation)> for VirtualCell {
 ///
 /// These are returned by the closures passed to `ConstraintSystem::create_gate`.
 #[derive(Debug)]
-pub struct Constraint<F: Field> {
-    name: &'static str,
+pub struct Constraint<'a, F: Field> {
+    name: &'a str,
     poly: Expression<F>,
 }
 
-impl<F: Field> From<Expression<F>> for Constraint<F> {
+impl<'a, F: Field> From<Expression<F>> for Constraint<'a, F> {
     fn from(poly: Expression<F>) -> Self {
         Constraint { name: "", poly }
     }
 }
 
-impl<F: Field> From<(&'static str, Expression<F>)> for Constraint<F> {
-    fn from((name, poly): (&'static str, Expression<F>)) -> Self {
+impl<'a, F: Field> From<(&'a str, Expression<F>)> for Constraint<'a, F> {
+    fn from((name, poly): (&'a str, Expression<F>)) -> Self {
         Constraint { name, poly }
     }
 }
 
-impl<F: Field> From<Expression<F>> for Vec<Constraint<F>> {
+impl<'a, F: Field> From<Expression<F>> for Vec<Constraint<'a, F>> {
     fn from(poly: Expression<F>) -> Self {
         vec![Constraint { name: "", poly }]
     }
@@ -849,12 +850,13 @@ impl<F: Field> From<Expression<F>> for Vec<Constraint<F>> {
 /// support Rust 1.51 or 1.52. If your minimum supported Rust version is 1.53 or greater,
 /// you can pass an array directly.
 #[derive(Debug)]
-pub struct Constraints<F: Field, C: Into<Constraint<F>>, Iter: IntoIterator<Item = C>> {
+pub struct Constraints<'a, F: Field, C: Into<Constraint<'a, F>>, Iter: IntoIterator<Item = C>> {
     selector: Expression<F>,
     constraints: Iter,
+    phantom: PhantomData<&'a C>,
 }
 
-impl<F: Field, C: Into<Constraint<F>>, Iter: IntoIterator<Item = C>> Constraints<F, C, Iter> {
+impl<'a, F: Field, C: Into<Constraint<'a, F>>, Iter: IntoIterator<Item = C>> Constraints<'a, F, C, Iter> {
     /// Constructs a set of constraints that are controlled by the given selector.
     ///
     /// Each constraint `c` in `iterator` will be converted into the constraint
@@ -863,31 +865,32 @@ impl<F: Field, C: Into<Constraint<F>>, Iter: IntoIterator<Item = C>> Constraints
         Constraints {
             selector,
             constraints,
+            phantom: PhantomData,
         }
     }
 }
 
-fn apply_selector_to_constraint<F: Field, C: Into<Constraint<F>>>(
+fn apply_selector_to_constraint<'a, F: Field, C: Into<Constraint<'a, F>>>(
     (selector, c): (Expression<F>, C),
-) -> Constraint<F> {
-    let constraint: Constraint<F> = c.into();
+) -> Constraint<'a, F> {
+    let constraint: Constraint<'a, F> = c.into();
     Constraint {
         name: constraint.name,
         poly: selector * constraint.poly,
     }
 }
 
-type ApplySelectorToConstraint<F, C> = fn((Expression<F>, C)) -> Constraint<F>;
-type ConstraintsIterator<F, C, I> = std::iter::Map<
+type ApplySelectorToConstraint<'a, F, C> = fn((Expression<F>, C)) -> Constraint<'a, F>;
+type ConstraintsIterator<'a, F, C, I> = std::iter::Map<
     std::iter::Zip<std::iter::Repeat<Expression<F>>, I>,
-    ApplySelectorToConstraint<F, C>,
+    ApplySelectorToConstraint<'a, F, C>,
 >;
 
-impl<F: Field, C: Into<Constraint<F>>, Iter: IntoIterator<Item = C>> IntoIterator
-    for Constraints<F, C, Iter>
+impl<'a, F: Field, C: Into<Constraint<'a, F>>, Iter: IntoIterator<Item = C>> IntoIterator
+    for Constraints<'a, F, C, Iter>
 {
-    type Item = Constraint<F>;
-    type IntoIter = ConstraintsIterator<F, C, Iter::IntoIter>;
+    type Item = Constraint<'a, F>;
+    type IntoIter = ConstraintsIterator<'a, F, C, Iter::IntoIter>;
 
     fn into_iter(self) -> Self::IntoIter {
         std::iter::repeat(self.selector)
@@ -1064,10 +1067,7 @@ impl<'a, F: Field> ConstraintSystem<'a, F> {
         &mut self,
         table_map: impl FnOnce(&mut VirtualCells<'_, F>) -> Vec<(Expression<F>, TableColumn)>,
     ) -> usize {
-        let index = self.lookups.len();
-
-        let mut self1 = self.clone();
-        let mut cells = VirtualCells::new(&mut self1);
+        let mut cells = VirtualCells::new(self);
         let table_map: Vec<(Expression<F>, Expression<F>)> =
           table_map(&mut cells)
             .into_iter()
@@ -1081,6 +1081,8 @@ impl<'a, F: Field> ConstraintSystem<'a, F> {
                 (input, table)
             })
             .collect();
+
+        let index = self.lookups.len();
 
         self.lookups.push(lookup::Argument::new(table_map));
 
@@ -1201,13 +1203,12 @@ impl<'a, F: Field> ConstraintSystem<'a, F> {
     ///
     /// A gate is required to contain polynomial constraints. This method will panic if
     /// `constraints` returns an empty iterator.
-    pub fn create_gate<C: Into<Constraint<F>>, Iter: IntoIterator<Item = C>>(
+    pub fn create_gate<C: Into<Constraint<'a, F>>, Iter: IntoIterator<Item = C>>(
         &mut self,
-        name: &'a str,
+        name: &'static str,
         constraints: impl FnOnce(&mut VirtualCells<'_, F>) -> Iter,
     ) {
-        let mut self1 = self.clone();
-        let mut cells = VirtualCells::new(&mut self1);
+        let mut cells = VirtualCells::new(self);
         let constraints = constraints(&mut cells);
         let queried_selectors = cells.queried_selectors;
         let queried_cells = cells.queried_cells;
