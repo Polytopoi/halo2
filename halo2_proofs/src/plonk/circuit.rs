@@ -1064,10 +1064,10 @@ impl<'a, F: Field> ConstraintSystem<'a, F> {
         &'a mut self,
         table_map: impl FnOnce(&mut VirtualCells<'a, F>) -> Vec<(Expression<F>, TableColumn)>,
     ) -> usize {
-        let _index = self.lookups.len();
+        let index = self.lookups.len();
 
         let mut cells = VirtualCells::new(self);
-        let _table_map: Vec<(Expression<F>, Expression<F>)> = table_map(&mut cells)
+        let table_map: Vec<(Expression<F>, Expression<F>)> = table_map(&mut cells)
             .into_iter()
             .map(|(input, table)| {
                 if input.contains_simple_selector() {
@@ -1080,10 +1080,9 @@ impl<'a, F: Field> ConstraintSystem<'a, F> {
             })
             .collect();
 
-        todo!();
-        // self.lookups.push(lookup::Argument::new(table_map));
+        self.lookups.push(lookup::Argument::new(table_map));
 
-        // index
+        index
     }
 
     fn query_fixed_index(&mut self, column: Column<Fixed>) -> usize {
