@@ -1061,13 +1061,15 @@ impl<'a, F: Field> ConstraintSystem<'a, F> {
     /// `table_map` returns a map between input expressions and the table columns
     /// they need to match.
     pub fn lookup(
-        &'a mut self,
-        table_map: impl FnOnce(&mut VirtualCells<'a, F>) -> Vec<(Expression<F>, TableColumn)>,
+        &mut self,
+        table_map: impl FnOnce(&mut VirtualCells<'_, F>) -> Vec<(Expression<F>, TableColumn)>,
     ) -> usize {
         let index = self.lookups.len();
 
-        let mut cells = VirtualCells::new(self);
-        let table_map: Vec<(Expression<F>, Expression<F>)> = table_map(&mut cells)
+        let mut self1 = self.clone();
+        let mut cells = VirtualCells::new(&mut self1);
+        let table_map: Vec<(Expression<F>, Expression<F>)> =
+          table_map(&mut cells)
             .into_iter()
             .map(|(input, table)| {
                 if input.contains_simple_selector() {
@@ -1200,34 +1202,34 @@ impl<'a, F: Field> ConstraintSystem<'a, F> {
     /// A gate is required to contain polynomial constraints. This method will panic if
     /// `constraints` returns an empty iterator.
     pub fn create_gate<C: Into<Constraint<F>>, Iter: IntoIterator<Item = C>>(
-        &'a mut self,
-        _name: &'a str,
-        _constraints: impl FnOnce(&mut VirtualCells<'a, F>) -> Iter,
+        &mut self,
+        name: &'a str,
+        constraints: impl FnOnce(&mut VirtualCells<'_, F>) -> Iter,
     ) {
-        todo!()
-        // let mut cells = VirtualCells::new(self);
-        // let constraints = constraints(&mut cells);
-        // let queried_selectors = cells.queried_selectors;
-        // let queried_cells = cells.queried_cells;
+        let mut self1 = self.clone();
+        let mut cells = VirtualCells::new(&mut self1);
+        let constraints = constraints(&mut cells);
+        let queried_selectors = cells.queried_selectors;
+        let queried_cells = cells.queried_cells;
 
-        // let (constraint_names, polys): (_, Vec<_>) = constraints
-        //     .into_iter()
-        //     .map(|c| c.into())
-        //     .map(|c| (c.name, c.poly))
-        //     .unzip::<&str, Expression<F>, _, Vec<Expression<F>>>();
+        let (constraint_names, polys): (_, Vec<_>) = constraints
+            .into_iter()
+            .map(|c| c.into())
+            .map(|c| (c.name, c.poly))
+            .unzip::<&str, Expression<F>, _, Vec<Expression<F>>>();
 
-        // assert!(
-        //     !polys.is_empty(),
-        //     "Gates must contain at least one constraint."
-        // );
+        assert!(
+            !polys.is_empty(),
+            "Gates must contain at least one constraint."
+        );
 
-        // self.gates.push(Gate {
-        //     name,
-        //     constraint_names,
-        //     polys,
-        //     queried_selectors,
-        //     queried_cells,
-        // });
+        self.gates.push(Gate {
+            name,
+            constraint_names,
+            polys,
+            queried_selectors,
+            queried_cells,
+        });
     }
 
     /// This will compress selectors together depending on their provided
