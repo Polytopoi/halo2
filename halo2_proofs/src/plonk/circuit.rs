@@ -1067,7 +1067,8 @@ impl<'a, F: Field> ConstraintSystem<'a, F> {
         &mut self,
         table_map: impl FnOnce(&mut VirtualCells<'_, F>) -> Vec<(Expression<F>, TableColumn)>,
     ) -> usize {
-        let mut cells = VirtualCells::new(self);
+        let mut self1 = self.clone();
+        let mut cells = VirtualCells::new(&mut self1);
         let table_map: Vec<(Expression<F>, Expression<F>)> =
           table_map(&mut cells)
             .into_iter()
@@ -1204,11 +1205,12 @@ impl<'a, F: Field> ConstraintSystem<'a, F> {
     /// A gate is required to contain polynomial constraints. This method will panic if
     /// `constraints` returns an empty iterator.
     pub fn create_gate<C: Into<Constraint<'a, F>>, Iter: IntoIterator<Item = C>>(
-        &mut self,
+        &'a mut self,
         name: &'static str,
         constraints: impl FnOnce(&mut VirtualCells<'_, F>) -> Iter,
     ) {
-        let mut cells = VirtualCells::new(self);
+        let mut self1 = self.clone();
+        let mut cells = VirtualCells::new(&mut self1);
         let constraints = constraints(&mut cells);
         let queried_selectors = cells.queried_selectors;
         let queried_cells = cells.queried_cells;

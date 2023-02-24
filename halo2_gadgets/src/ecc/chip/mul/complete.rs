@@ -20,9 +20,9 @@ pub struct Config {
     add_config: add::Config,
 }
 
-impl Config {
+impl<'a> Config {
     pub(super) fn configure(
-        meta: &mut ConstraintSystem<pallas::Base>,
+        meta: &'a mut ConstraintSystem<'a, pallas::Base>,
         z_complete: Column<Advice>,
         add_config: add::Config,
     ) -> Self {
@@ -43,7 +43,7 @@ impl Config {
     /// This is used to check the bits used in complete addition, since the incomplete
     /// addition gate (controlled by `q_mul`) already checks scalar decomposition for
     /// the other bits.
-    fn create_gate(&self, meta: &mut ConstraintSystem<pallas::Base>) {
+    fn create_gate(&self, meta: &'a mut ConstraintSystem<'a, pallas::Base>) {
         // | y_p | z_complete |
         // --------------------
         // | y_p | z_{i + 1}  |

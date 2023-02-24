@@ -71,9 +71,9 @@ pub(crate) struct Config<const NUM_BITS: usize> {
     pub(super) y_p: Column<Advice>,
 }
 
-impl<const NUM_BITS: usize> Config<NUM_BITS> {
+impl<'a, const NUM_BITS: usize> Config<NUM_BITS> {
     pub(super) fn configure(
-        meta: &mut ConstraintSystem<pallas::Base>,
+        meta: &'a mut ConstraintSystem<'a, pallas::Base>,
         z: Column<Advice>,
         x_a: Column<Advice>,
         x_p: Column<Advice>,
@@ -104,21 +104,21 @@ impl<const NUM_BITS: usize> Config<NUM_BITS> {
     }
 
     // Gate for incomplete addition part of variable-base scalar multiplication.
-    fn create_gate(&self, meta: &mut ConstraintSystem<pallas::Base>) {
+    fn create_gate(&self, meta: &'a mut ConstraintSystem<'a, pallas::Base>) {
         // Closure to compute x_{R,i} = λ_{1,i}^2 - x_{A,i} - x_{P,i}
-        let x_r = |meta: &mut VirtualCells<pallas::Base>, rotation: Rotation| {
+        let x_r = |meta: &'a mut VirtualCells<'a, pallas::Base>, rotation: Rotation| {
             self.double_and_add.x_r(meta, rotation)
         };
 
         // Closure to compute y_{A,i} = (λ_{1,i} + λ_{2,i}) * (x_{A,i} - x_{R,i}) / 2
-        let y_a = |meta: &mut VirtualCells<pallas::Base>, rotation: Rotation| {
+        let y_a = |meta: &'a mut VirtualCells<'a, pallas::Base>, rotation: Rotation| {
             self.double_and_add.Y_A(meta, rotation) * pallas::Base::TWO_INV
         };
 
         // Constraints used for q_mul_{2, 3} == 1
         // https://p.z.cash/halo2-0.1:ecc-var-mul-incomplete-main-loop?partial
         // https://p.z.cash/halo2-0.1:ecc-var-mul-incomplete-last-row?partial
-        let for_loop = |meta: &mut VirtualCells<pallas::Base>,
+        let for_loop = |meta: &mut VirtualCells<'a, pallas::Base>,
                         y_a_next: Expression<pallas::Base>| {
             let one = Expression::Constant(pallas::Base::one());
 
@@ -170,7 +170,7 @@ impl<const NUM_BITS: usize> Config<NUM_BITS> {
 
         // q_mul_1 == 1 checks
         // https://p.z.cash/halo2-0.1:ecc-var-mul-incomplete-first-row
-        meta.create_gate("q_mul_1 == 1 checks", |meta| {
+        meta.create_gate("q_mul_1 == 1 checks", |meta: &mut VirtualCells<'a, pallas::Base>| {
             let q_mul_1 = meta.query_selector(self.q_mul_1);
 
             let y_a_next = y_a(meta, Rotation::next());
@@ -180,7 +180,7 @@ impl<const NUM_BITS: usize> Config<NUM_BITS> {
 
         // q_mul_2 == 1 checks
         // https://p.z.cash/halo2-0.1:ecc-var-mul-incomplete-main-loop?partial
-        meta.create_gate("q_mul_2 == 1 checks", |meta| {
+        meta.create_gate("q_mul_2 == 1 checks", |meta: &mut VirtualCells<'a, pallas::Base>| {
             let q_mul_2 = meta.query_selector(self.q_mul_2);
 
             let y_a_next = y_a(meta, Rotation::next());
@@ -210,7 +210,7 @@ impl<const NUM_BITS: usize> Config<NUM_BITS> {
 
         // q_mul_3 == 1 checks
         // https://p.z.cash/halo2-0.1:ecc-var-mul-incomplete-last-row?partial
-        meta.create_gate("q_mul_3 == 1 checks", |meta| {
+        meta.create_gate("q_mul_3 == 1 checks", |meta: &'a mut VirtualCells<'a, pallas::Base>| {
             let q_mul_3 = meta.query_selector(self.q_mul_3);
             let y_a_final = meta.query_advice(self.double_and_add.lambda_1, Rotation::next());
             Constraints::with_selector(q_mul_3, for_loop(meta, y_a_final))

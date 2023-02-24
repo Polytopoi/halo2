@@ -21,9 +21,9 @@ pub struct Config {
     pub y_qr: Column<Advice>,
 }
 
-impl Config {
+impl<'a> Config {
     pub(super) fn configure(
-        meta: &mut ConstraintSystem<pallas::Base>,
+        meta: &'a mut ConstraintSystem<'a, pallas::Base>,
         x_p: Column<Advice>,
         y_p: Column<Advice>,
         x_qr: Column<Advice>,
@@ -53,7 +53,7 @@ impl Config {
             .collect()
     }
 
-    fn create_gate(&self, meta: &mut ConstraintSystem<pallas::Base>) {
+    fn create_gate(&self, meta: &'a mut ConstraintSystem<'a, pallas::Base>) {
         // https://p.z.cash/halo2-0.1:ecc-incomplete-addition
         meta.create_gate("incomplete addition", |meta| {
             let q_add_incomplete = meta.query_selector(self.q_add_incomplete);
