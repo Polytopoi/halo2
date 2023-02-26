@@ -33,11 +33,12 @@ use crate::{
 /// generated previously for the same circuit. The provided `instances`
 /// are zero-padded internally.
 pub fn create_proof<
+    'a,
     C: CurveAffine,
     E: EncodedChallenge<C>,
     R: RngCore,
     T: TranscriptWrite<C, E>,
-    ConcreteCircuit: Circuit<C::Scalar>,
+    ConcreteCircuit: Circuit<'a, C::Scalar>,
 >(
     params: &Params<C>,
     pk: &ProvingKey<C>,
@@ -737,7 +738,7 @@ fn test_create_proof() {
     #[derive(Clone, Copy)]
     struct MyCircuit;
 
-    impl<F: Field> Circuit<F> for MyCircuit {
+    impl<'a, F: Field> Circuit<'a, F> for MyCircuit {
         type Config = ();
 
         type FloorPlanner = SimpleFloorPlanner;

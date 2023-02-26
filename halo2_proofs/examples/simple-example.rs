@@ -65,7 +65,7 @@ struct FieldConfig {
     s_mul: Selector,
 }
 
-impl<F: Field> FieldChip<F> {
+impl<'a, F: Field> FieldChip<F> {
     fn construct(config: <Self as Chip<F>>::Config) -> Self {
         Self {
             config,
@@ -74,7 +74,7 @@ impl<F: Field> FieldChip<F> {
     }
 
     fn configure(
-        meta: &mut ConstraintSystem<F>,
+        meta: &mut ConstraintSystem<'static, F>,
         advice: [Column<Advice>; 2],
         instance: Column<Instance>,
         constant: Column<Fixed>,
@@ -113,7 +113,7 @@ impl<F: Field> FieldChip<F> {
             // has the following properties:
             // - When s_mul = 0, any value is allowed in lhs, rhs, and out.
             // - When s_mul != 0, this constrains lhs * rhs = out.
-            vec![s_mul * (lhs * rhs - out)]
+            (vec![s_mul * (lhs * rhs - out)], meta.meta)
         });
 
         FieldConfig {
@@ -244,7 +244,7 @@ struct MyCircuit<F: Field> {
     b: Value<F>,
 }
 
-impl<F: Field> Circuit<F> for MyCircuit<F> {
+impl<F: Field> Circuit<'static, F> for MyCircuit<F> {
     // Since we are using a single chip for everything, we can just reuse its config.
     type Config = FieldConfig;
     type FloorPlanner = SimpleFloorPlanner;
@@ -253,7 +253,7 @@ impl<F: Field> Circuit<F> for MyCircuit<F> {
         Self::default()
     }
 
-    fn configure(meta: &mut ConstraintSystem<F>) -> Self::Config {
+    fn configure(meta: &mut ConstraintSystem<'static, F>) -> Self::Config {
         // We create the two advice columns that FieldChip uses for I/O.
         let advice = [meta.advice_column(), meta.advice_column()];
 

@@ -23,7 +23,7 @@ use crate::{
 /// Measures a circuit to determine its costs, and explain what contributes to them.
 #[allow(dead_code)]
 #[derive(Debug)]
-pub struct CircuitCost<G: PrimeGroup, ConcreteCircuit: Circuit<G::Scalar>> {
+pub struct CircuitCost<G: PrimeGroup, ConcreteCircuit: for<'a> Circuit<'a, G::Scalar>> {
     /// Power-of-2 bound on the number of rows in the circuit.
     k: u32,
     /// Maximum degree of the circuit.
@@ -254,7 +254,7 @@ impl<F: Field> Assignment<F> for Layout {
     }
 }
 
-impl<G: PrimeGroup, ConcreteCircuit: Circuit<G::Scalar>> CircuitCost<G, ConcreteCircuit> {
+impl<G: PrimeGroup, ConcreteCircuit: for<'a> Circuit<'a, G::Scalar>> CircuitCost<G, ConcreteCircuit> {
     /// Measures a circuit with parameter constant `k`.
     ///
     /// Panics if `k` is not large enough for the circuit.

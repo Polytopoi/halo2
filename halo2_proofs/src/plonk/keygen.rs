@@ -22,16 +22,16 @@ use crate::{
     },
 };
 
-pub(crate) fn create_domain<C, ConcreteCircuit>(
+pub(crate) fn create_domain<'a, C, ConcreteCircuit>(
     params: &Params<C>,
 ) -> (
     EvaluationDomain<C::Scalar>,
-    ConstraintSystem<C::Scalar>,
+    ConstraintSystem<'a, C::Scalar>,
     ConcreteCircuit::Config,
 )
 where
     C: CurveAffine,
-    ConcreteCircuit: Circuit<C::Scalar>,
+    ConcreteCircuit: Circuit<'a, C::Scalar>,
 {
     let mut cs = ConstraintSystem::default();
     let config = ConcreteCircuit::configure(&mut cs);
@@ -193,7 +193,7 @@ pub fn keygen_vk<'a, C, ConcreteCircuit>(
 where
     C: CurveAffine,
     C::Scalar: FromUniformBytes<64>,
-    ConcreteCircuit: Circuit<C::Scalar>,
+    ConcreteCircuit: Circuit<'a, C::Scalar>,
 {
     let (domain, cs, config) = create_domain::<C, ConcreteCircuit>(params);
 
@@ -251,7 +251,7 @@ pub fn keygen_pk<'a, C, ConcreteCircuit>(
 ) -> Result<ProvingKey<'a, C>, Error>
 where
     C: CurveAffine,
-    ConcreteCircuit: Circuit<C::Scalar>,
+    ConcreteCircuit: Circuit<'a, C::Scalar>,
 {
     let mut cs = ConstraintSystem::default();
     let config = ConcreteCircuit::configure(&mut cs);

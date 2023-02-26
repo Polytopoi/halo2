@@ -152,8 +152,8 @@ impl<F: Field> AddChip<F> {
         }
     }
 
-    fn configure(
-        meta: &mut ConstraintSystem<F>,
+    fn configure<'a>(
+        meta: &'a mut ConstraintSystem<'a, F>,
         advice: [Column<Advice>; 2],
     ) -> <Self as Chip<F>>::Config {
         let s_add = meta.selector();
@@ -165,7 +165,7 @@ impl<F: Field> AddChip<F> {
             let out = meta.query_advice(advice[0], Rotation::next());
             let s_add = meta.query_selector(s_add);
 
-            vec![s_add * (lhs + rhs - out)]
+            (vec![s_add * (lhs + rhs - out)], meta.meta)
         });
 
         AddConfig { advice, s_add }
@@ -287,7 +287,7 @@ impl<F: Field> MulChip<F> {
             // has the following properties:
             // - When s_mul = 0, any value is allowed in lhs, rhs, and out.
             // - When s_mul != 0, this constrains lhs * rhs = out.
-            vec![s_mul * (lhs * rhs - out)]
+            (vec![s_mul * (lhs * rhs - out)], meta.meta)
         });
 
         MulConfig { advice, s_mul }
@@ -454,7 +454,7 @@ struct MyCircuit<F: Field> {
     c: Value<F>,
 }
 
-impl<F: Field> Circuit<F> for MyCircuit<F> {
+impl<'a, F: Field> Circuit<'a, F> for MyCircuit<F> {
     // Since we are using a single chip for everything, we can just reuse its config.
     type Config = FieldConfig;
     type FloorPlanner = SimpleFloorPlanner;

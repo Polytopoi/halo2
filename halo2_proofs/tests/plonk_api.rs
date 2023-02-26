@@ -261,7 +261,7 @@ fn plonk_api() {
         }
     }
 
-    impl<F: Field> Circuit<F> for MyCircuit<F> {
+    impl<'a, F: Field> Circuit<'a, F> for MyCircuit<F> {
         type Config = PlonkConfig;
         type FloorPlanner = SimpleFloorPlanner;
 

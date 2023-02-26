@@ -100,7 +100,7 @@ pub struct CircuitGates<'a> {
 
 impl<'a> CircuitGates<'a> {
     /// Collects the gates from within the circuit.
-    pub fn collect<F: PrimeField, C: Circuit<F>>() -> Self {
+    pub fn collect<F: PrimeField, C: Circuit<'a, F>>() -> Self {
         // Collect the graph details.
         let mut cs = ConstraintSystem::default();
         let _ = C::configure(&mut cs);

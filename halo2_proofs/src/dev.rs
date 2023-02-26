@@ -479,7 +479,7 @@ impl<'a, F: Field> Assignment<F> for MockProver<'a, F> {
 impl<'a, F: Field + Ord> MockProver<'a, F> {
     /// Runs a synthetic keygen-and-prove operation on the given circuit, collecting data
     /// about the constraints and their assignments.
-    pub fn run<ConcreteCircuit: Circuit<F>>(
+    pub fn run<ConcreteCircuit: Circuit<'a, F>>(
         k: u32,
         circuit: &ConcreteCircuit,
         instance: Vec<Vec<F>>,
@@ -942,11 +942,11 @@ mod tests {
 
         struct FaultyCircuit {}
 
-        impl Circuit<Fp> for FaultyCircuit {
+        impl Circuit<'static, Fp> for FaultyCircuit {
             type Config = FaultyCircuitConfig;
             type FloorPlanner = SimpleFloorPlanner;
 
-            fn configure(meta: &mut ConstraintSystem<Fp>) -> Self::Config {
+            fn configure<'b>(meta: &'b mut ConstraintSystem<'static, Fp>) -> Self::Config {
                 let a = meta.advice_column();
                 let b = meta.advice_column();
                 let q = meta.selector();
@@ -957,7 +957,7 @@ mod tests {
                     let q = cells.query_selector(q);
 
                     // If q is enabled, a and b must be assigned to.
-                    vec![q * (a - b)]
+                    (vec![q * (a - b)], cells.meta)
                 });
 
                 FaultyCircuitConfig { a, q }
@@ -1016,7 +1016,7 @@ mod tests {
 
         struct FaultyCircuit {}
 
-        impl Circuit<Fp> for FaultyCircuit {
+        impl Circuit<'static, Fp> for FaultyCircuit {
             type Config = FaultyCircuitConfig;
             type FloorPlanner = SimpleFloorPlanner;
 
@@ -1033,7 +1033,7 @@ mod tests {
                     // When q is not enabled, lookup the default value instead.
                     let not_q = Expression::Constant(Fp::one()) - q.clone();
                     let default = Expression::Constant(Fp::from(2));
-                    vec![(q * a + not_q * default, table)]
+                    (vec![(q * a + not_q * default, table)], meta)
                 });
 
                 FaultyCircuitConfig { a, q, table }

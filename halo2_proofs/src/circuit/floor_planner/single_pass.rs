@@ -25,7 +25,7 @@ use crate::{
 pub struct SimpleFloorPlanner;
 
 impl FloorPlanner for SimpleFloorPlanner {
-    fn synthesize<F: Field, CS: Assignment<F>, C: Circuit<F>>(
+    fn synthesize<'a, F: Field, CS: Assignment<F>, C: Circuit<'a, F>>(
         cs: &mut CS,
         circuit: &C,
         config: C::Config,
@@ -472,7 +472,7 @@ mod tests {
     fn not_enough_columns_for_constants() {
         struct MyCircuit {}
 
-        impl Circuit<vesta::Scalar> for MyCircuit {
+        impl Circuit<'static, vesta::Scalar> for MyCircuit {
             type Config = Column<Advice>;
             type FloorPlanner = SimpleFloorPlanner;
 

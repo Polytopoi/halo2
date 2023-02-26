@@ -454,7 +454,7 @@ pub trait FloorPlanner {
     /// - Perform any necessary setup or measurement tasks, which may involve one or more
     ///   calls to `Circuit::default().synthesize(config, &mut layouter)`.
     /// - Call `circuit.synthesize(config, &mut layouter)` exactly once.
-    fn synthesize<F: Field, CS: Assignment<F>, C: Circuit<F>>(
+    fn synthesize<'a, F: Field, CS: Assignment<F>, C: Circuit<'a, F>>(
         cs: &mut CS,
         circuit: &C,
         config: C::Config,
@@ -465,7 +465,7 @@ pub trait FloorPlanner {
 /// This is a trait that circuits provide implementations for so that the
 /// backend prover can ask the circuit to synthesize using some given
 /// [`ConstraintSystem`] implementation.
-pub trait Circuit<F: Field> {
+pub trait Circuit<'a, F: Field> {
     /// This is a configuration object that stores things like columns.
     type Config: Clone;
     /// The floor planner used for this circuit. This is an associated type of the
@@ -478,7 +478,7 @@ pub trait Circuit<F: Field> {
 
     /// The circuit is given an opportunity to describe the exact gate
     /// arrangement, column arrangement, etc.
-    fn configure(meta: &mut ConstraintSystem<F>) -> Self::Config;
+    fn configure<'b>(meta: &'b mut ConstraintSystem<'a, F>) -> Self::Config;
 
     /// Given the provided `cs`, synthesize the circuit. The concrete type of
     /// the caller will be different depending on the context, and they may or
@@ -1064,13 +1064,14 @@ impl<'a, F: Field> ConstraintSystem<'a, F> {
     /// `table_map` returns a map between input expressions and the table columns
     /// they need to match.
     pub fn lookup(
-        &mut self,
-        table_map: impl FnOnce(&mut VirtualCells<'_, F>) -> Vec<(Expression<F>, TableColumn)>,
+        &'a mut self,
+        table_map: impl FnOnce(&mut VirtualCells<'_, F>) ->
+          (Vec<(Expression<F>, TableColumn)>, &'a mut ConstraintSystem<'a, F>),
     ) -> usize {
-        let mut self1 = self.clone();
-        let mut cells = VirtualCells::new(&mut self1);
+        let mut cells = VirtualCells::new(self);
+        let (table_map, self1) = table_map(&mut cells);
         let table_map: Vec<(Expression<F>, Expression<F>)> =
-          table_map(&mut cells)
+          table_map
             .into_iter()
             .map(|(input, table)| {
                 if input.contains_simple_selector() {
@@ -1083,9 +1084,9 @@ impl<'a, F: Field> ConstraintSystem<'a, F> {
             })
             .collect();
 
-        let index = self.lookups.len();
+        let index = self1.lookups.len();
 
-        self.lookups.push(lookup::Argument::new(table_map));
+        self1.lookups.push(lookup::Argument::new(table_map));
 
         index
     }
@@ -1204,14 +1205,15 @@ impl<'a, F: Field> ConstraintSystem<'a, F> {
     ///
     /// A gate is required to contain polynomial constraints. This method will panic if
     /// `constraints` returns an empty iterator.
-    pub fn create_gate<C: Into<Constraint<'a, F>>, Iter: IntoIterator<Item = C>>(
+    pub fn create_gate<C: Into<Constraint<'static, F>>, Iter: IntoIterator<Item = C>>(
         &'a mut self,
         name: &'static str,
-        constraints: impl FnOnce(&mut VirtualCells<'_, F>) -> Iter,
+        constraints:
+         impl FnOnce(&mut VirtualCells<'a, F>) ->
+                (Iter, &'a mut ConstraintSystem<'a, F>),
     ) {
-        let mut self1 = self.clone();
-        let mut cells = VirtualCells::new(&mut self1);
-        let constraints = constraints(&mut cells);
+        let mut cells = VirtualCells::new(self);
+        let (constraints, self1) = constraints(&mut cells);
         let queried_selectors = cells.queried_selectors;
         let queried_cells = cells.queried_cells;
 
@@ -1226,7 +1228,7 @@ impl<'a, F: Field> ConstraintSystem<'a, F> {
             "Gates must contain at least one constraint."
         );
 
-        self.gates.push(Gate {
+        self1.gates.push(Gate {
             name,
             constraint_names,
             polys,
@@ -1484,7 +1486,8 @@ impl<'a, F: Field> ConstraintSystem<'a, F> {
 /// table.
 #[derive(Debug)]
 pub struct VirtualCells<'a, F: Field> {
-    meta: &'a mut ConstraintSystem<'a, F>,
+    ///  The constraint system from which this view is derived
+    pub meta: &'a mut ConstraintSystem<'a, F>,
     queried_selectors: Vec<Selector>,
     queried_cells: Vec<VirtualCell>,
 }
