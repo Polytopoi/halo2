@@ -90,11 +90,11 @@ impl std::ops::Deref for RegionStart {
 #[derive(Clone, Copy, Debug)]
 pub struct Cell {
     /// Identifies the region in which this cell resides.
-    region_index: RegionIndex,
+    pub region_index: RegionIndex,
     /// The relative offset of this cell within its region.
-    row_offset: usize,
+    pub row_offset: usize,
     /// The column of this cell.
-    column: Column<Any>,
+    pub column: Column<Any>,
 }
 
 /// An assigned cell.
